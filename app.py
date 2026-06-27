@@ -230,7 +230,7 @@ def clean_pipeline(df: pd.DataFrame, k_level: int) -> pd.DataFrame:
     return df
 
 # --------------------------------------------------------------------------------------
-# STAGE 3: DATA QUALITY VERIFICATION (DQV)
+# STAGE 3: DATA QUALITY VERIFICATION
 def run_dq_checks(df: pd.DataFrame, missing_threshold_pct: float = 15.0):
     results = {}
 
