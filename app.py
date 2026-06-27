@@ -1,9 +1,3 @@
-import hashlib
-import io
-import os
-import re
-import subprocess
-from datetime import datetime
 import numpy as np
 import pandas as pd
 import requests
@@ -11,6 +5,12 @@ import streamlit as st
 from bs4 import BeautifulSoup
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 
+import hashlib
+import io
+import os
+import re
+import subprocess
+from datetime import datetime
 # --------------------------------------------------------------------------------------
 # PAGE CONFIG
 st.set_page_config(
