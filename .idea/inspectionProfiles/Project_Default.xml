@@ -1,0 +1,25 @@
+<component name="InspectionProjectProfileManager">
+  <profile version="1.0">
+    <option name="myName" value="Project Default" />
+    <inspection_tool class="PyPackageRequirementsInspection" enabled="true" level="WARNING" enabled_by_default="true">
+      <option name="ignoredPackages">
+        <list>
+          <option value="dvc-s3" />
+          <option value="pandera" />
+          <option value="faker" />
+          <option value="plotly" />
+          <option value="boto3" />
+          <option value="pandas" />
+          <option value="numpy" />
+          <option value="streamlit" />
+          <option value="requests" />
+          <option value="beautifulsoup4" />
+          <option value="lxml" />
+          <option value="html5lib" />
+          <option value="scikit-learn" />
+          <option value="dvc" />
+        </list>
+      </option>
+    </inspection_tool>
+  </profile>
+</component>

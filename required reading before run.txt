@@ -1,0 +1,5 @@
+libraries required:
+numpy pandas streamlit requests beautifulsoup lxml html5lib scikit-learn dvc
+
+url of test:
+https://data.humdata.org/dataset/who-data-for-mar
