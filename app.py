@@ -26,7 +26,7 @@ os.makedirs(WORKDIR, exist_ok=True)
 # --------------------------------------------------------------------------------------
 # SESSION STATE
 DEFAULTS = {
-    "stage": "input",  # input -> versioned -> rejected -> done
+    "stage": "input",
     "raw_df": None,
     "clean_df": None,
     "final_df": None,
