@@ -41,10 +41,8 @@ for k, v in DEFAULTS.items():
     if k not in st.session_state:
         st.session_state[k] = v
 
-
 def log(msg: str):
     st.session_state.logs.append(f"{datetime.now().strftime('%H:%M:%S')} - {msg}")
-
 
 def reset_pipeline():
     for k, v in DEFAULTS.items():
