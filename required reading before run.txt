@@ -1,6 +1,6 @@
 use pycharm
 
-libraries required:
+install required libraries:
 numpy pandas streamlit requests beautifulsoup lxml html5lib scikit-learn dvc
 
 url of test:
