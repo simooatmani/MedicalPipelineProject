@@ -14,7 +14,6 @@ from sklearn.preprocessing import LabelEncoder, StandardScaler
 
 # --------------------------------------------------------------------------------------
 # PAGE CONFIG
-# --------------------------------------------------------------------------------------
 st.set_page_config(
     page_title="Medical Data Cleaning & Versioning Pipeline",
     layout="wide",
@@ -26,7 +25,6 @@ os.makedirs(WORKDIR, exist_ok=True)
 
 # --------------------------------------------------------------------------------------
 # SESSION STATE
-# --------------------------------------------------------------------------------------
 DEFAULTS = {
     "stage": "input",  # input -> versioned -> rejected -> done
     "raw_df": None,
@@ -52,10 +50,8 @@ def reset_pipeline():
     for k, v in DEFAULTS.items():
         st.session_state[k] = v
 
-
 # --------------------------------------------------------------------------------------
-# DVC / GIT HELPERS  (best-effort: failures are logged, never crash the app)
-# --------------------------------------------------------------------------------------
+# GIT / DVC
 def run_cmd(cmd: str):
     try:
         result = subprocess.run(
@@ -72,24 +68,20 @@ def run_cmd(cmd: str):
         log(f"⚠️ Error running `{cmd}`: {e}")
         return False, str(e)
 
-
 def ensure_git_dvc_repo(local_remote_path: str):
     if not os.path.exists(os.path.join(WORKDIR, ".git")):
         run_cmd("git init -q")
-        run_cmd('git config user.email "pipeline@medapp.local"')
-        run_cmd('git config user.name "Medical Pipeline"')
         log("🔧 Initialized Git repository")
     if not os.path.exists(os.path.join(WORKDIR, ".dvc")):
         ok, _ = run_cmd("dvc init -q")
         if ok:
             log("🔧 Initialized DVC repository")
-    # Configure local remote storage
+    # I used just local remote storage
     abs_remote = os.path.abspath(local_remote_path)
     os.makedirs(abs_remote, exist_ok=True)
     ok, _ = run_cmd(f"dvc remote add -d -f localremote {abs_remote}")
     if ok:
         log(f"🔧 DVC remote (local) set to {abs_remote}")
-
 
 def dvc_track(filename: str, message: str):
     ok1, _ = run_cmd(f"dvc add {filename}")
@@ -99,7 +91,6 @@ def dvc_track(filename: str, message: str):
         log(f"📦 DVC tracked: {filename}")
     return ok1
 
-
 def dvc_push():
     ok, _ = run_cmd("dvc push -q")
     if ok:
@@ -108,15 +99,12 @@ def dvc_push():
         log("💾 Push to local remote skipped — tracked locally only")
     return ok
 
-
 def dvc_tag(version_tag: str):
     run_cmd(f"git tag -f {version_tag}")
     log(f"🏷️ Tagged version: {version_tag}")
 
-
 # --------------------------------------------------------------------------------------
 # STAGE 1: DATA COLLECTION & SCRAPING
-# --------------------------------------------------------------------------------------
 def collect_data(url: str) -> pd.DataFrame:
     log(f"🌐 Fetching data from {url}")
     headers = {"User-Agent": "Mozilla/5.0 (MedicalDataPipeline/1.0)"}
@@ -140,7 +128,6 @@ def collect_data(url: str) -> pd.DataFrame:
         log("✅ Parsed HTTP response as JSON")
         return df
 
-    # Try HTML tables (pandas + lxml/BeautifulSoup under the hood)
     try:
         tables = pd.read_html(io.StringIO(resp.text))
         if tables:
@@ -150,7 +137,6 @@ def collect_data(url: str) -> pd.DataFrame:
     except ValueError:
         pass
 
-    # Fallback: look for linked .csv / .json files on the page
     soup = BeautifulSoup(resp.text, "html.parser")
     for link in soup.find_all("a", href=True):
         href = link["href"]
@@ -163,15 +149,12 @@ def collect_data(url: str) -> pd.DataFrame:
 
     raise ValueError("No tabular CSV/JSON/HTML-table data could be extracted from this URL.")
 
-
 # --------------------------------------------------------------------------------------
-# STAGE 2 (cleaning helpers): ANONYMIZATION & PROCESSING
-# --------------------------------------------------------------------------------------
+# STAGE 2: ANONYMIZATION & PROCESSING
 PHI_PATTERNS = [
     "name", "ssn", "social_security", "mrn", "medical_record", "address", "phone",
     "email", "dob", "date_of_birth", "patient_id", "fullname", "first_name", "last_name",
 ]
-
 
 def anonymize_phi(df: pd.DataFrame, k_level: int = 5) -> pd.DataFrame:
     df = df.copy()
@@ -195,7 +178,6 @@ def anonymize_phi(df: pd.DataFrame, k_level: int = 5) -> pd.DataFrame:
                 pass
     return df
 
-
 def standardize_icd_codes(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
     icd_pattern = re.compile(r"^[A-Z]\d{2}(\.\d+)?$")
@@ -208,11 +190,10 @@ def standardize_icd_codes(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-UNIT_CONVERSIONS = {
-    "glucose": lambda x: x / 18.0,      # mg/dL -> mmol/L
-    "cholesterol": lambda x: x / 38.67,  # mg/dL -> mmol/L
+UNIT_CONVERSIONS = {# mg/dL -> mmol/L
+    "glucose": lambda x: x / 18.0,
+    "cholesterol": lambda x: x / 38.67,
 }
-
 
 def normalize_units(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
@@ -231,9 +212,7 @@ def normalize_units(df: pd.DataFrame) -> pd.DataFrame:
                     pass
     return df
 
-
 NA_MARKERS = ["n/a", "na", "null", "none", "unknown", "-", "--", ""]
-
 
 def handle_inconsistent_values(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
@@ -243,7 +222,6 @@ def handle_inconsistent_values(df: pd.DataFrame) -> pd.DataFrame:
     log("🧹 Standardized missing-value markers and trimmed whitespace")
     return df
 
-
 def clean_pipeline(df: pd.DataFrame, k_level: int) -> pd.DataFrame:
     df = handle_inconsistent_values(df)
     df = standardize_icd_codes(df)
@@ -251,10 +229,8 @@ def clean_pipeline(df: pd.DataFrame, k_level: int) -> pd.DataFrame:
     df = anonymize_phi(df, k_level)
     return df
 
-
 # --------------------------------------------------------------------------------------
 # STAGE 3: DATA QUALITY VERIFICATION (DQV)
-# --------------------------------------------------------------------------------------
 def run_dq_checks(df: pd.DataFrame, missing_threshold_pct: float = 15.0):
     results = {}
 
@@ -327,10 +303,8 @@ def run_dq_checks(df: pd.DataFrame, missing_threshold_pct: float = 15.0):
     overall_pass = not any(r["critical"] and r["status"] == "fail" for r in results.values())
     return results, overall_pass
 
-
 # --------------------------------------------------------------------------------------
 # STAGE 4: DATA TRANSFORMATION
-# --------------------------------------------------------------------------------------
 def transform_data(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
     df.columns = [re.sub(r"\s+", "_", c.strip().lower()) for c in df.columns]
@@ -353,10 +327,8 @@ def transform_data(df: pd.DataFrame) -> pd.DataFrame:
     log("🔄 Encoded categoricals, scaled numeric features, formatted column names")
     return df
 
-
 # --------------------------------------------------------------------------------------
 # SIDEBAR — LOCAL STORAGE & SETTINGS
-# --------------------------------------------------------------------------------------
 with st.sidebar:
     st.header("⚙️ Local Storage")
     local_remote = st.text_input(
@@ -381,8 +353,7 @@ with st.sidebar:
 
 # --------------------------------------------------------------------------------------
 # HEADER + STAGE TRACKER
-# --------------------------------------------------------------------------------------
-st.title("🏥 Medical Data Cleaning & Version Control Pipeline")
+st.title("Medical Data Cleaning & Version Control Pipeline")
 st.caption("URL → Scrape → DVC Version (local) → Clean & Anonymize → Quality Gate → Transform → Clean Dataset")
 
 STAGE_LABELS = ["Input", "Collection", "DVC Init", "Cleaning", "DQ Verification", "Transform", "Output"]
@@ -404,8 +375,7 @@ for i, (c, name) in enumerate(zip(cols, STAGE_LABELS)):
 st.divider()
 
 # --------------------------------------------------------------------------------------
-# STAGE: INPUT  (Enter / submit runs the entire pipeline)
-# --------------------------------------------------------------------------------------
+# STAGE: INPUT
 if st.session_state.stage == "input":
     st.subheader("📥 Input: Medical Data Source URL")
     with st.form("url_form", clear_on_submit=False):
@@ -480,8 +450,7 @@ if st.session_state.stage == "input":
             st.rerun()
 
 # --------------------------------------------------------------------------------------
-# STAGE: REJECTED  (Data Quality Gate failed)
-# --------------------------------------------------------------------------------------
+# STAGE: REJECTED
 elif st.session_state.stage == "rejected":
     st.error("🚫 Data Quality Gate: REJECTED")
     st.write("The cleaned dataset failed one or more critical quality checks:")
@@ -494,8 +463,7 @@ elif st.session_state.stage == "rejected":
         st.rerun()
 
 # --------------------------------------------------------------------------------------
-# STAGE: DONE  (final output — show data, download CSV, return)
-# --------------------------------------------------------------------------------------
+# STAGE: OUTPUT & DOWNLOAD
 elif st.session_state.stage == "done":
     local_tag_msg = (
         f"✅ Dataset cleaned, verified, and version-tagged as `{st.session_state.version_tag}` "
