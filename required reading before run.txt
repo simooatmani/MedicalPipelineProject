@@ -1,3 +1,5 @@
+use pycharm
+
 libraries required:
 numpy pandas streamlit requests beautifulsoup lxml html5lib scikit-learn dvc
 
